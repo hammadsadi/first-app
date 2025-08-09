@@ -1,75 +1,159 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { createHomeStyles } from "@/assets/styles/home.styles";
+import EmptyState from "@/components/EmptyState";
+import Header from "@/components/Header";
+import Input from "@/components/Input";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import { api } from "@/convex/_generated/api";
+import { Doc, Id } from "@/convex/_generated/dataModel";
+import { ColorScheme, useTheme } from "@/hooks/useTheme";
+import { Ionicons } from "@expo/vector-icons";
+import { useMutation, useQuery } from "convex/react";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  FlatList,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+type Todo = Doc<"todo">;
+export default function Index() {
+  const todos = useQuery(api.todo.getTodos);
+  const addTodo = useMutation(api.todo.addTodo);
+  const clearTodo = useMutation(api.todo.clearTodos);
+  const toggleTodo = useMutation(api.todo.toggleTodoStatus);
+  const deleteTodo = useMutation(api.todo.deleteTodo);
+  const { colors, toggleDarkMode } = useTheme();
+  const homeStyle = createHomeStyles(colors);
+  const isLoading = todos === undefined;
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+  // Update Todo Status
+  const handleToggleTodo = async (id: Id<"todo">) => {
+    try {
+      await toggleTodo({ id });
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-export default function HomeScreen() {
+  // Handle delete Todo
+  const handleDeleteTodo = async (id: Id<"todo">) => {
+    try {
+      await deleteTodo({ id });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  const renderTodoItem = ({ item }: { item: Todo }) => {
+    return (
+      <View style={homeStyle.todoItemWrapper}>
+        <LinearGradient
+          colors={colors.gradients.surface}
+          style={homeStyle.todoItem}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <TouchableOpacity
+            style={homeStyle.checkbox}
+            activeOpacity={0.9}
+            onPress={() => handleToggleTodo(item?._id)}
+          >
+            <LinearGradient
+              colors={
+                item.isCompleted
+                  ? colors.gradients.success
+                  : colors.gradients.muted
+              }
+              style={[
+                homeStyle.checkboxInner,
+                {
+                  borderColor: item.isCompleted ? "transparent" : colors.border,
+                },
+              ]}
+            >
+              {item?.isCompleted && (
+                <Ionicons name="checkmark" size={16} color={"#fff"} />
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+          <View style={homeStyle.todoTextContainer}>
+            <Text
+              style={[
+                homeStyle.todoText,
+                item?.isCompleted && {
+                  textDecorationLine: "line-through",
+                  color: colors.textMuted,
+                  opacity: 0.8,
+                },
+              ]}
+            >
+              {item?.text}
+            </Text>
+
+            <View style={homeStyle.todoActions}>
+              <TouchableOpacity onPress={() => {}} activeOpacity={0.9}>
+                <LinearGradient
+                  colors={colors.gradients.warning}
+                  style={homeStyle.actionButton}
+                >
+                  <Ionicons name="pencil" size={20} color={"#fff"} />
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleDeleteTodo(item?._id)}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={colors.gradients.danger}
+                  style={homeStyle.actionButton}
+                >
+                  <Ionicons name="trash" size={20} color={"#fff"} />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  };
+
+  if (isLoading) return <LoadingSpinner />;
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <LinearGradient
+      colors={colors.gradients.background}
+      style={homeStyle.container}
+    >
+      <StatusBar barStyle={colors.statusBarStyle} />
+      <Header />
+      <Input />
+      <SafeAreaView style={homeStyle.safeArea}>
+        <FlatList
+          data={todos}
+          renderItem={renderTodoItem}
+          keyExtractor={(item) => item._id}
+          style={homeStyle.todoList}
+          contentContainerStyle={homeStyle.todoListContent}
+          ListEmptyComponent={<EmptyState />}
+          showsVerticalScrollIndicator={false}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+const createStyle = (color: ColorScheme) => {
+  const style = StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: color.bg,
+    },
+    content: {
+      fontSize: 22,
+    },
+  });
+  return style;
+};
